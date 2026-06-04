@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Header, HTTPException, status, Response
+from fastapi import FastAPI, Header, HTTPException, status, Response, Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 import uuid
 import os
 
@@ -11,6 +12,28 @@ db = {}
 
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", "secret-token")
 
+# Fix: thêm type field vào validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "type": "validation_error",
+            "detail": exc.errors()
+        }
+    )
+
+# Fix: thêm type field vào auth errors  
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "type": "http_error",
+            "detail": exc.detail
+        }
+    )
+
 class Reading(BaseModel):
     device_id: str
     metric: str
@@ -18,12 +41,10 @@ class Reading(BaseModel):
     unit: str
     timestamp: str
 
-# Fix 1: thêm version
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "service": "iot-app", "version": os.getenv("SERVICE_VERSION", "0.4.0")}
 
-# Fix 2: x_api_key Optional để validate auth trước, Fix 5: warning header
 @app.post("/readings", status_code=status.HTTP_201_CREATED)
 def create_reading(
     data: Reading,
@@ -38,13 +59,11 @@ def create_reading(
     reading_id = str(uuid.uuid4())
     db[reading_id] = data
 
-    # Fix 5: thêm warning header khi value = 80
     if data.value >= 80:
         response.headers["X-Warning"] = "High temperature detected"
 
     return {"reading_id": reading_id, **data.model_dump()}
 
-# Fix 3: thêm endpoint GET /readings/latest
 @app.get("/readings/latest")
 def get_latest_readings(device_id: str, limit: int = 5):
     items = [
