@@ -1,21 +1,20 @@
 FROM python:3.11-slim
 
-# Cài đặt curl để kiểm tra healthcheck
+# Cài đặt curl để GitHub Actions có thể kiểm tra sức khỏe container
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy requirement và cài đặt
+# Cài đặt các thư viện cần thiết
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ code vào /app
+# Copy toàn bộ mã nguồn
 COPY . .
 
-# Phân quyền cho user non-root
+# Phân quyền
 RUN useradd -m notifyuser && chown -R notifyuser /app
 USER notifyuser
 
-# Quan trọng: Đường dẫn này phải khớp với cấu trúc thư mục của bạn
-# Đảm bảo app được khởi chạy từ thư mục gốc /app
+# LỆNH QUAN TRỌNG: Phải trỏ đúng vào đường dẫn module `src.iot_app.main`
 CMD ["python", "-m", "uvicorn", "src.iot_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
