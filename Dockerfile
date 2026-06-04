@@ -1,21 +1,19 @@
-# Sử dụng base image nhẹ
 FROM python:3.11-slim
 
-# Cài đặt curl để kiểm tra service health (tránh lỗi Timed out)
+# Cài đặt curl để kiểm tra sức khỏe container
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy các file cần thiết và cài đặt thư viện
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy toàn bộ code
 COPY . .
 
-# Thiết lập đường dẫn để Python nhận diện thư mục 'src' là gốc của các package
+# Thiết lập đường dẫn để Python nhận diện thư mục 'src' là gốc
 ENV PYTHONPATH=/app
 
-# Khởi chạy FastAPI
-# Lệnh này gọi file main.py thông qua gói src.iot_app
+# Khởi chạy bằng module path thay vì đường dẫn file vật lý
+# Dấu chấm (.) giúp tránh lỗi gạch chéo của Windows
 CMD ["python", "-m", "uvicorn", "src.iot_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
