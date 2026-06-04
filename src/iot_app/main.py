@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
 import os
+from datetime import datetime
 
 app = FastAPI()
 
@@ -12,24 +13,26 @@ db = {}
 
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", "secret-token")
 
-# Fix: thêm type field vào validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
         content={
             "type": "validation_error",
+            "title": "Validation Error",
+            "status": 422,
             "detail": exc.errors()
         }
     )
 
-# Fix: thêm type field vào auth errors  
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "type": "http_error",
+            "title": "HTTP Error",
+            "status": exc.status_code,
             "detail": exc.detail
         }
     )
@@ -49,20 +52,31 @@ def health_check():
 def create_reading(
     data: Reading,
     response: Response,
-    x_api_key: Optional[str] = Header(default=None)
+    authorization: Optional[str] = Header(default=None)
 ):
-    if not x_api_key:
+    # Kiểm tra Authorization: Bearer <token>
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing API Key")
-    if x_api_key != AUTH_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
     
-    reading_id = str(uuid.uuid4())
+    token = authorization.replace("Bearer ", "")
+    if token != AUTH_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    # Format reading_id: R-YYYYMMDD-XXXX
+    date_str = datetime.now().strftime("%Y%m%d")
+    short_id = str(uuid.uuid4().int)[:4]
+    reading_id = f"R-{date_str}-{short_id}"
+
     db[reading_id] = data
 
     if data.value >= 80:
         response.headers["X-Warning"] = "High temperature detected"
 
-    return {"reading_id": reading_id, **data.model_dump()}
+    return {
+        "reading_id": reading_id,
+        "accepted": True,
+        **data.model_dump()
+    }
 
 @app.get("/readings/latest")
 def get_latest_readings(device_id: str, limit: int = 5):
