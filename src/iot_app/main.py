@@ -6,18 +6,20 @@ import uuid
 # Khởi tạo ứng dụng FastAPI
 app = FastAPI()
 
-# Model kiểm tra dữ liệu đầu vào (Data Validation)
+# Model kiểm tra dữ liệu đầu vào (Validation)
 class Reading(BaseModel):
     device_id: str
     metric: str
-    value: float = Field(..., ge=-40, le=80) # Ràng buộc giá trị từ -40 đến 80
+    value: float = Field(..., ge=-40, le=80)  # Ràng buộc giá trị từ -40 đến 80
     unit: str
     timestamp: str
 
-# Database giả lập
+# Database giả lập trong bộ nhớ
 db = {}
 
-# Endpoint Health Check (BẮT BUỘC để GitHub Actions không bị Timeout)
+# [QUAN TRỌNG] Endpoint Health Check
+# GitHub Actions cần endpoint này để kiểm tra xem ứng dụng đã chạy xong chưa.
+# Nếu không có nó, hệ thống sẽ đợi 30 giây rồi báo Timed out.
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "team-notify", "version": "v0.1.0"}
@@ -28,7 +30,7 @@ def create_reading(
     data: Reading, 
     x_api_key: Optional[str] = Header(None, alias="x-api-key")
 ):
-    # Kiểm tra API Key
+    # Kiểm tra API Key (Yêu cầu bảo mật)
     if not x_api_key or x_api_key != "secret-token":
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     
@@ -39,7 +41,6 @@ def create_reading(
 # Endpoint lấy reading gần nhất
 @app.get("/readings/latest")
 def get_latest(device_id: str, limit: int = 5):
-    # Logic trả về dữ liệu mẫu hoặc từ db
     return {"items": []}
 
 # Endpoint lấy reading theo ID
