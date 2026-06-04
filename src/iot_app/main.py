@@ -2,13 +2,13 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
 import uuid
-import os  # ← thêm dòng này
+import os
 
 app = FastAPI()
 
 db = {}
 
-AUTH_TOKEN = os.getenv("AUTH_TOKEN", "secret-token")  # ← thêm dòng này
+AUTH_TOKEN = os.getenv("AUTH_TOKEN", "secret-token")
 
 class Reading(BaseModel):
     device_id: str
@@ -17,7 +17,8 @@ class Reading(BaseModel):
     unit: str
     timestamp: str
 
-@app.get("/health")
+# ✅ CHỈ SỬA DÒNG NÀY
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "service": "iot-app"}
 
@@ -26,7 +27,7 @@ def create_reading(
     data: Reading,
     x_api_key: str = Header(...)
 ):
-    if x_api_key != AUTH_TOKEN:  # ← sửa dòng này
+    if x_api_key != AUTH_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid API Key")
     
     reading_id = str(uuid.uuid4())
