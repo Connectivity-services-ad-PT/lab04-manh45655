@@ -2,13 +2,14 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
 import uuid
+import os  # ← thêm dòng này
 
 app = FastAPI()
 
-# Database giả lập
 db = {}
 
-# Yêu cầu 1: Schema Pydantic với Validation
+AUTH_TOKEN = os.getenv("AUTH_TOKEN", "secret-token")  # ← thêm dòng này
+
 class Reading(BaseModel):
     device_id: str
     metric: str
@@ -16,25 +17,22 @@ class Reading(BaseModel):
     unit: str
     timestamp: str
 
-# Yêu cầu 2: Health Check (Để vượt qua lỗi Timed out của GitHub Actions)
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "iot-app"}
 
-# Yêu cầu 3: POST endpoint với bảo mật API Key qua Header
 @app.post("/readings", status_code=status.HTTP_201_CREATED)
 def create_reading(
-    data: Reading, 
-    x_api_key: str = Header(...) # Bắt buộc phải có header x-api-key
+    data: Reading,
+    x_api_key: str = Header(...)
 ):
-    if x_api_key != "secret-token":
+    if x_api_key != AUTH_TOKEN:  # ← sửa dòng này
         raise HTTPException(status_code=401, detail="Invalid API Key")
     
     reading_id = str(uuid.uuid4())
     db[reading_id] = data
     return {"reading_id": reading_id, **data.model_dump()}
 
-# Yêu cầu 4: GET endpoint theo ID
 @app.get("/readings/{reading_id}")
 def get_reading(reading_id: str):
     if reading_id not in db:
