@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Cài đặt curl để phục vụ Healthcheck
+# Cài đặt curl để GitHub Actions có thể kiểm tra sức khỏe
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -9,11 +9,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ code
+# Copy source code
 COPY . .
 
-# Thiết lập PYTHONPATH để Python nhận diện thư mục src/ là gốc
+# THIẾT LẬP ĐƯỜNG DẪN ĐỂ PYTHON TÌM THẤY THƯ MỤC 'src'
 ENV PYTHONPATH=/app
 
-# Khởi chạy bằng module path chính xác
+# KHỞI CHẠY APP BẰNG MÔ-ĐUN (Cực kỳ quan trọng để đúng đường dẫn)
 CMD ["python", "-m", "uvicorn", "src.iot_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
