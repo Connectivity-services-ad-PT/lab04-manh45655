@@ -1,23 +1,19 @@
 FROM python:3.11-slim
 
-# Cài đặt curl để phục vụ Healthcheck
+# Cài curl để phục vụ Healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Tạo user non-root
-RUN useradd -m notifyuser
 WORKDIR /app
 
-# Copy requirement
+# Copy requirement và cài đặt trước để tận dụng Docker Cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ source code
+# Copy source code
 COPY . .
 
-# Phân quyền
-RUN chown -R notifyuser /app
-USER notifyuser
+# Set PYTHONPATH để đảm bảo Python nhận diện được thư mục src
+ENV PYTHONPATH=/app
 
-# LỆNH CMD QUAN TRỌNG: 
-# Dùng "python -m uvicorn" giúp nhận diện đúng cấu trúc thư mục src/
+# Lệnh chạy module chính xác
 CMD ["python", "-m", "uvicorn", "src.iot_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
